@@ -35,6 +35,21 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/gestion-guias-despacho:latest
 
-      # Deploy to EC2 queda temporalmente desactivado hasta configurar:
-      # EC2_HOST, EC2_USER, EC2_SSH_KEY, AWS_REGION y S3_BUCKET.
-      # Cuando la instancia EC2 este lista, volver a activar este paso.
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/gestion-guias-despacho:latest
+            sudo docker stop gestion-guias-despacho || true
+            sudo docker rm gestion-guias-despacho || true
+            sudo docker run -d \
+              --name gestion-guias-despacho \
+              -p 8080:8080 \
+              -e AWS_REGION=${{ secrets.AWS_REGION }} \
+              -e S3_BUCKET=${{ secrets.S3_BUCKET }} \
+              -e S3_ENABLED=false \
+              -e EFS_PATH=/tmp/guias-despacho \
+              ${{ secrets.DOCKERHUB_USERNAME }}/gestion-guias-despacho:latest
